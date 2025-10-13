@@ -76,20 +76,20 @@ def get_weekly_summary():
         if df.empty:
             return []
 
-      # Parse timestamps
+        # Parse timestamps
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
-        
+
         if df.empty:
             return []
 
-    # Make sure all timestamps are tz-aware in Pacific
+        # Make sure all timestamps are tz-aware in Pacific
         if df['timestamp'].dt.tz is None:
             df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
         else:
             df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
-        
-     # Store raw timestamp for delete/edit matching
+
+        # Store raw timestamp for delete/edit matching
         df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         # Filter by current week
