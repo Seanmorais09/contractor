@@ -1,0 +1,18 @@
+<form method="POST">
+  <label>User:</label>
+  <input type="text" name="user" value="{{ entry['user'] }}" required>
+
+  <label>Action:</label>
+  <select name="action">
+    <option value="in" {% if entry['action'] == 'in' %}selected{% endif %}>In</option>
+    <option value="out" {% if entry['action'] == 'out' %}selected{% endif %}>Out</option>
+  </select>
+
+  <label>Tasks:</label>
+  <input type="text" name="tasks" value="{{ entry['tasks'] }}">
+
+  <label>Project:</label>
+  <input type="text" name="project" value="{{ entry['project'] }}">
+
+  <button type="submit">Save Changes</button>
+</form>
