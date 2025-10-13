@@ -83,8 +83,8 @@ def get_weekly_summary():
         if df.empty:
             return []
 
-        # Make sure all timestamps are tz-aware in Pacific
-        if df['timestamp'].dt.tz is None:
+        # Normalize timezone to Pacific
+        if df['timestamp'].dt.tz is None or str(df['timestamp'].dtype) == "datetime64[ns]":
             df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
         else:
             df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
@@ -120,21 +120,19 @@ def get_total_hours():
 
         if df.empty:
             return {}
-    # Parse timestamps
+
+        # Parse timestamps
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
-        
-        if df.empty:
-            return []
 
-    # Ensure all timestamps are tz-aware in Pacific
-        if df['timestamp'].dt.tz is None:
+        if df.empty:
+            return {}
+
+        # Normalize timezone to Pacific
+        if df['timestamp'].dt.tz is None or str(df['timestamp'].dtype) == "datetime64[ns]":
             df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
         else:
             df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
-            
-        if df.empty:
-            return {}
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
@@ -171,7 +169,6 @@ def get_total_hours():
     except Exception as e:
         print(f"Error in get_total_hours: {e}")
         return {}
-
 # ✅ Routes
 @app.route('/')
 def home():
