@@ -314,3 +314,10 @@ textarea::placeholder {
   color: #a94442;
   margin-top: 5px;
 }
+.btn-edit {
+  background-color: #4CAF50;
+  color: white;
+  padding: 5px 10px;
+  text-decoration: none;
+  border-radius: 4px;
+}
