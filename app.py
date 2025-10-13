@@ -416,7 +416,7 @@ def clock():
     timestamp = datetime.now(pacific).strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-       conn = sqlite3.connect('timelogs.db')
+        conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO timelogs (user, action, timestamp, tasks, photo, project)
