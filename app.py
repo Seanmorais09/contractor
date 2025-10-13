@@ -69,14 +69,10 @@ pacific = pytz.timezone('US/Pacific')
 
 # ✅ Weekly summary function
 def get_weekly_summary():
- conn = sqlite3.connect('timelogs.db')
-df = pd.read_sql_query('SELECT * FROM timelogs', conn)
-conn.close()
-
     try:
-        df = pd.read_csv(
-            'timelogs.csv',
-            names=['user', 'action', 'timestamp', 'tasks', 'photo', 'project'])
+        conn = sqlite3.connect('timelogs.db')
+        df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+        conn.close()
 
         # Convert to datetime first
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
@@ -101,20 +97,19 @@ conn.close()
         print(f"Error in get_weekly_summary: {e}")
         return []
 
-
 # ✅ Total hours calculator
 def get_total_hours():
-conn = sqlite3.connect('timelogs.db')
-df = pd.read_sql_query('SELECT * FROM timelogs', conn)
-conn.close()
-
     try:
-        df = pd.read_csv(
-            'timelogs.csv',
-            names=['user', 'action', 'timestamp', 'tasks', 'photo', 'project'])
+        # Read from SQLite instead of CSV
+        conn = sqlite3.connect('timelogs.db')
+        df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+        conn.close()
+
+        # Convert to datetime
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
 
+        # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
         current_week = datetime.now(pacific).isocalendar().week
         df = df[df['week'] == current_week]
@@ -140,11 +135,12 @@ conn.close()
                 total += datetime.now(pacific) - clocked_in
 
             total_hours[user] = round(total.total_seconds() / 3600, 2)
+
         return total_hours
+
     except Exception as e:
         print(f"Error in get_total_hours: {e}")
-        return {}
-
+        return {}    
 
 
 
@@ -323,18 +319,13 @@ def delete_entry():
         return "⛔ Unauthorized. Only Admin can delete entries.", 403
 
     try:
-        with open('timelogs.csv', 'r') as f:
-            rows = list(csv.reader(f))
-
         timestamp = request.form.get('timestamp')
-        # Remove rows that match the timestamp exactly
-        updated_rows = [
-            row for row in rows if row[2].strip() != timestamp.strip()
-        ]
 
-        with open('timelogs.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(updated_rows)
+        conn = sqlite3.connect('timelogs.db')
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM timelogs WHERE timestamp = ?', (timestamp,))
+        conn.commit()
+        conn.close()
 
         return redirect(url_for('dashboard'))
     except Exception as e:
@@ -342,10 +333,16 @@ def delete_entry():
 
 @app.route('/edit/<timestamp>', methods=['GET', 'POST'])
 def edit_entry(timestamp):
-    df = pd.read_csv('timelogs.csv', names=['user', 'action', 'timestamp', 'tasks', 'photo', 'project'])
+    # Load the entry from SQLite
+    conn = sqlite3.connect('timelogs.db')
+    df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+    conn.close()
+
+    # Ensure timestamp is parsed
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
+    # Find the entry that matches the timestamp
     entry = df[df['raw_timestamp'] == timestamp].iloc[0].to_dict()
 
     if request.method == 'POST':
@@ -355,11 +352,17 @@ def edit_entry(timestamp):
         entry['tasks'] = request.form['tasks']
         entry['project'] = request.form['project']
 
-        # Replace in DataFrame
-        df.loc[df['raw_timestamp'] == timestamp, ['user', 'action', 'tasks', 'project']] = \
-            entry['user'], entry['action'], entry['tasks'], entry['project']
+        # Update the database instead of CSV
+        conn = sqlite3.connect('timelogs.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE timelogs
+            SET user = ?, action = ?, tasks = ?, project = ?
+            WHERE timestamp = ?
+        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], timestamp))
+        conn.commit()
+        conn.close()
 
-        df.to_csv('timelogs.csv', index=False, header=False)
         return redirect(url_for('dashboard'))
 
     return render_template('edit.html', entry=entry)
