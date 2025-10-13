@@ -60,8 +60,7 @@ COMPLETED_PROJECTS = [
 PROJECTS = [
     project for project in PROJECTS if project not in COMPLETED_PROJECTS
 ]
-# ✅ Allowed IP address (replace with your actual Wi-Fi IP)
-ALLOWED_IP = "172.56.108.248"
+
 
 # ✅ Timezone
 pacific = pytz.timezone('US/Pacific')
@@ -168,6 +167,7 @@ def home():
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
+    debug=True
     limit = request.args.get('limit', default=10, type=int)
     pacific = pytz.timezone('America/Los_Angeles')
     today_date = datetime.now(pacific).strftime(
