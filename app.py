@@ -178,114 +178,108 @@ def home():
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
-    debug=True
-    limit = request.args.get('limit', default=10, type=int)
-    pacific = pytz.timezone('America/Los_Angeles')
-    today_date = datetime.now(pacific).strftime(
-        '%B %d, %Y')  # Example: October 6, 2025
-    selected_week = request.args.get('week')  # format: YYYY-MM-DD
+    try:
+        pacific = pytz.timezone('America/Los_Angeles')
+        today = datetime.now(pacific)
+        today_date = today.strftime('%B %d, %Y')
+        limit = request.args.get('limit', default=10, type=int)
 
-    today = datetime.now(pacific)
+        selected_week = request.args.get('week')
+        selected_date = request.args.get('date')
+        selected_user = request.args.get('user')
+        selected_project = request.args.get('project', '')
 
-    if selected_week:
-        # selected_week is naive, so we localize it
-        start_of_week = pacific.localize(
-            datetime.strptime(selected_week, "%Y-%m-%d"))
-    else:
-        weekday = today.weekday()  # Monday = 0, Sunday = 6
-        days_since_sunday = (weekday + 1) % 7
-        start_of_week = today - timedelta(days=days_since_sunday)
+        # Normalize "All" filters
+        if selected_user == "All":
+            selected_user = None
+        if selected_project == "All":
+            selected_project = None
 
-    # end_of_week is always 6 days after start
-    end_of_week = start_of_week + timedelta(days=6)
+        # Handle login
+        if request.method == 'POST':
+            pin = request.form.get('pin')
+            for name, valid_pin in VALID_PINS.items():
+                if pin == valid_pin:
+                    session['user'] = name
+                    break
+            else:
+                return render_template("403.html"), 403
 
-    selected_date = request.args.get('date')
-    selected_user = request.args.get('user')
-    selected_project = request.args.get('project', '')
+        logged_in_user = session.get('user')
+        is_admin = logged_in_user == "Admin"
 
-    # Normalize "All" filters
-    if selected_user == "All":
-        selected_user = None
-    if selected_project == "All":
-        selected_project = None
-
-    # Handle login
-    if request.method == 'POST':
-        pin = request.form.get('pin')
-        for name, valid_pin in VALID_PINS.items():
-            if pin == valid_pin:
-                session['user'] = name
-                break
+        # Determine week range
+        if selected_week:
+            start_of_week = pacific.localize(datetime.strptime(selected_week, "%Y-%m-%d"))
         else:
-            return render_template("403.html"), 403
+            weekday = today.weekday()
+            days_since_sunday = (weekday + 1) % 7
+            start_of_week = today - timedelta(days=days_since_sunday)
 
-    logged_in_user = session.get('user')
-    is_admin = logged_in_user == "Admin"
+        end_of_week = start_of_week + timedelta(days=6)
 
-    # Load full data
-    conn = sqlite3.connect('timelogs.db')
-    df_full = pd.read_sql_query('SELECT * FROM timelogs', conn)
-    conn.close()
-    df_full['timestamp'] = pd.to_datetime(df_full['timestamp'],
-                                          errors='coerce')
-    df_full['project'] = df_full['project'].fillna("-").astype(str)
-    df_full['user'] = df_full['user'].astype(str).str.strip().str.title()
-    df_full = df_full.dropna(subset=['timestamp'])
-    df_full['timestamp'] = df_full['timestamp'].dt.tz_localize(
-        'US/Pacific', ambiguous='NaT', nonexistent='NaT')
-    df_full['user'] = df_full['user'].astype(str).str.strip().str.title()
-    # Filter by week only
-    weekly_df = df_full[(df_full['timestamp'] >= start_of_week)
-                        & (df_full['timestamp'] <= end_of_week)]
+        # Load full data
+        conn = sqlite3.connect('timelogs.db')
+        df_full = pd.read_sql_query('SELECT * FROM timelogs', conn)
+        conn.close()
 
-    # Build sessions strictly within week range
-    sessions = []
-    weekly_summary = []
-    for contractor, group in weekly_df.groupby('user'):
-        if selected_user and selected_user != "Admin" and contractor != selected_user:
-            continue
+        df_full['timestamp'] = pd.to_datetime(df_full['timestamp'], errors='coerce')
+        df_full = df_full.dropna(subset=['timestamp'])
 
-        group = group.sort_values('timestamp')
-        in_time = None
-        for _, row in group.iterrows():
-            if selected_project and row['project'] != selected_project:
+        # Normalize timezone
+        if str(df_full['timestamp'].dtype) == "datetime64[ns]":
+            df_full['timestamp'] = df_full['timestamp'].dt.tz_localize('US/Pacific', ambiguous='NaT', nonexistent='NaT')
+        else:
+            df_full['timestamp'] = df_full['timestamp'].dt.tz_convert('US/Pacific')
+
+        df_full['project'] = df_full['project'].fillna("-").astype(str)
+        df_full['user'] = df_full['user'].astype(str).str.strip().str.title()
+
+        # Filter by week
+        weekly_df = df_full[(df_full['timestamp'] >= start_of_week) & (df_full['timestamp'] <= end_of_week)]
+
+        # Build sessions
+        sessions = []
+        for contractor, group in weekly_df.groupby('user'):
+            if selected_user and selected_user != "Admin" and contractor != selected_user:
                 continue
-            if row['action'] == 'in':
-                if start_of_week <= row['timestamp'] <= end_of_week:
+
+            group = group.sort_values('timestamp')
+            in_time = None
+            for _, row in group.iterrows():
+                if selected_project and row['project'] != selected_project:
+                    continue
+                if row['action'] == 'in':
                     in_time = row['timestamp']
-                else:
-                    in_time = None
-            elif row['action'] == 'out' and in_time:
-                if start_of_week <= row['timestamp'] <= end_of_week:
+                elif row['action'] == 'out' and in_time:
                     duration = row['timestamp'] - in_time
                     sessions.append({
                         'date': in_time.date(),
                         'duration': duration.total_seconds() / 60,
                         'contractor': contractor
                     })
-                in_time = None
+                    in_time = None
 
-    # Daily summary
-    daily_minutes = defaultdict(float)
-    for entry in sessions:
-        key = (entry['date'], entry['contractor'])
-        daily_minutes[key] += entry['duration']
+        # Daily summary
+        daily_minutes = defaultdict(float)
+        for entry in sessions:
+            key = (entry['date'], entry['contractor'])
+            daily_minutes[key] += entry['duration']
 
-    daily_summary = []
-    for (date, contractor), minutes in sorted(daily_minutes.items(),
-                                              reverse=True):
-        hours = int(minutes // 60)
-        mins = int(minutes % 60)
-        daily_summary.append({
-            'date': date,
-            'contractor': contractor,
-            'formatted': f"{hours}h {mins}m"
-        })
+        daily_summary = []
+        for (date, contractor), minutes in sorted(daily_minutes.items(), reverse=True):
+            hours = int(minutes // 60)
+            mins = int(minutes % 60)
+            daily_summary.append({
+                'date': date,
+                'contractor': contractor,
+                'formatted': f"{hours}h {mins}m"
+            })
 
-    # Weekly summary
-    weekly_totals = defaultdict(float)
-    for entry in sessions:
-        weekly_totals[entry['contractor']] += entry['duration']
+        # Weekly summary
+        weekly_totals = defaultdict(float)
+        for entry in sessions:
+            weekly_totals[entry['contractor']] += entry['duration']
 
         weekly_summary = []
         for contractor in VALID_PINS.keys():
@@ -296,46 +290,51 @@ def dashboard():
                 'contractor': contractor,
                 'formatted': f"{hours}h {mins}m"
             })
-    # Grand total for all contractors
-    grand_total_minutes = sum(weekly_totals.values())
-    grand_total_hours = round(grand_total_minutes / 60, 2)
-    remaining_hours = round(80 - grand_total_hours, 2)
 
-    # Apply filters to dashboard entries
-    df = weekly_df.copy()
-    if selected_user and selected_user != "Admin":
-        df = df[df['user'] == selected_user]
-    if selected_project:
-        df = df[df['project'] == selected_project]
+        grand_total_minutes = sum(weekly_totals.values())
+        grand_total_hours = round(grand_total_minutes / 60, 2)
+        remaining_hours = round(80 - grand_total_hours, 2)
 
-    entries = df.to_dict(orient='records')[:limit]
-    users = sorted(
-        set(row['user'] for row in weekly_df.to_dict(orient='records')))
-    photo_folder = os.path.join('static', 'photos')
-    photos = set(
-        os.listdir(photo_folder)) if os.path.exists(photo_folder) else set()
+        # Apply filters
+        df = weekly_df.copy()
+        if selected_user and selected_user != "Admin":
+            df = df[df['user'] == selected_user]
+        if selected_project:
+            df = df[df['project'] == selected_project]
 
-    return render_template('dashboard.html',
-                           data=get_weekly_summary(),
-                           users=users,
-                           selected_user=selected_user,
-                           total_hours=get_total_hours(),
-                           is_admin=is_admin,
-                           photos=photos,
-                           entries=entries,
-                           projects=PROJECTS,
-                           completed_projects=COMPLETED_PROJECTS,
-                           selected_project=selected_project,
-                           selected_date=selected_date,
-                           daily_summary=daily_summary,
-                           grand_total_hours=grand_total_hours,
-                           weekly_summary=weekly_summary,
-                           limit=limit,
-                           remaining_hours=remaining_hours,
-                           start_of_week=start_of_week.date(),
-                           today_date=today_date)
+        df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %I:%M %p')
+        df['raw_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+        entries = df.to_dict(orient='records')[:limit]
 
+        users = sorted(set(df_full['user']))
+        photo_folder = os.path.join('static', 'photos')
+        photos = set(os.listdir(photo_folder)) if os.path.exists(photo_folder) else set()
 
+        return render_template('dashboard.html',
+                               data=entries,
+                               users=users,
+                               selected_user=selected_user,
+                               total_hours=get_total_hours(),
+                               is_admin=is_admin,
+                               photos=photos,
+                               entries=entries,
+                               projects=PROJECTS,
+                               completed_projects=COMPLETED_PROJECTS,
+                               selected_project=selected_project,
+                               selected_date=selected_date,
+                               daily_summary=daily_summary,
+                               grand_total_hours=grand_total_hours,
+                               weekly_summary=weekly_summary,
+                               limit=limit,
+                               remaining_hours=remaining_hours,
+                               start_of_week=start_of_week.date(),
+                               today_date=today_date,
+                               week_ending=end_of_week.date())
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"<h3>Dashboard error: {e}</h3>", 500
+        
 @app.route('/delete', methods=['POST'])
 def delete_entry():
     logged_in_user = session.get('user')
