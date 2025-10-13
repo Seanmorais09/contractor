@@ -128,8 +128,13 @@ def get_total_hours():
 
 
 # ✅ IP restriction middleware
+ALLOW_ALL = True  # Set to False to re-enable restriction
+
 @app.before_request
 def restrict_by_ip():
+    if ALLOW_ALL:
+        return
+
     forwarded_for = request.headers.get('X-Forwarded-For', '')
     ip = forwarded_for.split(',')[0] if forwarded_for else request.remote_addr
     print(f"Detected IP: {ip}")
@@ -140,7 +145,7 @@ def restrict_by_ip():
     if request.endpoint in ['home', 'clock', 'dashboard']:
         if ip == ALLOWED_IP:
             return
-        else:
+        else
             return """
             <html>
             <head>
