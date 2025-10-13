@@ -1,14 +1,33 @@
 from flask import Flask, request, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
-import csv
+import sqlite3
 import pandas as pd
 import os
 import pytz
 from collections import defaultdict
 
+# Initialize SQLite database
+def init_timelog_db():
+    conn = sqlite3.connect('timelogs.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS timelogs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user TEXT,
+            action TEXT,
+            timestamp TEXT,
+            tasks TEXT,
+            photo TEXT,
+            project TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
 app = Flask(__name__)
 
+init_timelog_db()
+ 
 app.secret_key = 'secret_key_everett-7714'
 # 🔐 Valid PINs
 VALID_PINS = {
@@ -50,9 +69,9 @@ pacific = pytz.timezone('US/Pacific')
 
 # ✅ Weekly summary function
 def get_weekly_summary():
-    if not os.path.exists('timelogs.csv') or os.path.getsize(
-            'timelogs.csv') == 0:
-        return []
+ conn = sqlite3.connect('timelogs.db')
+df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+conn.close()
 
     try:
         df = pd.read_csv(
@@ -85,9 +104,9 @@ def get_weekly_summary():
 
 # ✅ Total hours calculator
 def get_total_hours():
-    if not os.path.exists('timelogs.csv') or os.path.getsize(
-            'timelogs.csv') == 0:
-        return {}
+conn = sqlite3.connect('timelogs.db')
+df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+conn.close()
 
     try:
         df = pd.read_csv(
@@ -184,9 +203,9 @@ def dashboard():
     is_admin = logged_in_user == "Admin"
 
     # Load full data
-    df_full = pd.read_csv(
-        'timelogs.csv',
-        names=['user', 'action', 'timestamp', 'tasks', 'photo', 'project'])
+    conn = sqlite3.connect('timelogs.db')
+    df_full = pd.read_sql_query('SELECT * FROM timelogs', conn)
+    conn.close()
     df_full['timestamp'] = pd.to_datetime(df_full['timestamp'],
                                           errors='coerce')
     df_full['project'] = df_full['project'].fillna("-").astype(str)
@@ -379,15 +398,19 @@ def clock():
     timestamp = datetime.now(pacific).strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        with open('timelogs.csv', 'a', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                [user, action, timestamp, tasks, photo_filename, project])
+       conn = sqlite3.connect('timelogs.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO timelogs (user, action, timestamp, tasks, photo, project)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user, action, timestamp, tasks, photo_filename, project))
+        conn.commit()
+        conn.close()
         print(
-            f"✅ Saved to CSV: {user}, {action}, {timestamp}, {tasks}, {photo_filename},{project}"
+            f"✅ Saved : {user}, {action}, {timestamp}, {tasks}, {photo_filename},{project}"
         )
     except Exception as e:
-        print(f"❌ CSV write failed: {e}")
+        print(f"❌ DB write failed: {e}")
         return "<h3>Error saving entry. Please try again.</h3><a href='/'>Back</a>"
 
     display_time = datetime.now(pacific).strftime('%I:%M %p %Z')
