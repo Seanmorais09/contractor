@@ -108,7 +108,7 @@
                 <input type="hidden" name="timestamp" value="{{ row.timestamp }}">
                 <button type="submit" class="delete-button">🗑️</button>
               </form>
-              <a href="{{ url_for('edit_entry', timestamp=entry['raw_timestamp']) }}" class="btn btn-edit">Edit</a>
+                <a href="{{ url_for('edit_entry', timestamp=row['raw_timestamp']) }}" class="btn btn-edit">Edit</a>           
             </td>
           {% endif %}
         </tr>
