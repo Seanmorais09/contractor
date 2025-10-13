@@ -120,20 +120,20 @@ def get_total_hours():
 
         if df.empty:
             return {}
-# Parse timestamps
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-    df = df.dropna(subset=['timestamp'])
-    
-    if df.empty:
-        return []
+    # Parse timestamps
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        df = df.dropna(subset=['timestamp'])
+        
+        if df.empty:
+            return []
 
-# Ensure all timestamps are tz-aware in Pacific
-    if df['timestamp'].dt.tz is None:
-        df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
-    else:
-        df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
-            if df.empty:
-                return {}
+    # Ensure all timestamps are tz-aware in Pacific
+        if df['timestamp'].dt.tz is None:
+            df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
+        else:
+            df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
+                if df.empty:
+                    return {}
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
