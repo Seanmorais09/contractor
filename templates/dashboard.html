@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekly Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<h2>Weekly Summary</h2>
+
+<!-- Unified Filter Form -->
+<form method="get" action="/dashboard" class="filter-form">
+  <label for="date">Filter by date:</label>
+  <input type="date" name="date" id="date" value="{{ selected_date }}">
+
+  <label for="user">Filter by user:</label>
+  <select name="user" id="user">
+    <option value="">All</option>
+    {% for name in users %}
+      <option value="{{ name }}" {% if name == selected_user %}selected{% endif %}>{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="week">Select Week (Sunday):</label>
+  <input type="date" name="week" id="week" value="{{ start_of_week }}">
+
+  <label for="project">Filter by Project:</label>
+  <select name="project" id="project">
+    <option value="">-- All Projects --</option>
+    {% for project in projects %}
+      <option value="{{ project }}" {% if selected_project == project %}selected{% endif %}>{{ project }}</option>
+    {% endfor %}
+  </select>
+
+  <button type="submit">Filter</button>
+</form>
+
+<!-- Clear Filters Button -->
+<form method="get" action="/dashboard">
+  <button type="submit">Clear Filters</button>
+</form>
+
+{% if daily_summary %}
+  <h3>Hours Per Day</h3>
+  <ul>
+    {% for entry in daily_summary %}
+      <li>{{ entry.date }} — {{ entry.contractor }}: {{ entry.formatted }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+  <h3>Weekly Hours by Contractor </h3>
+  <p>Total for this week {{ week_ending }} as of: {{ today_date }}</p>
+<ul>
+  {% for entry in weekly_summary %}
+    <li>{{ entry.contractor }}: {{ entry.formatted }}</li>
+  {% endfor %}
+</ul>
+<p>Grand Total Hours This Week: {{ grand_total_hours }} hours</p>
+  <div class="warning-box">
+    <h3>⚠️ Remaining Hours For Bank: <span class="highlight">{{ remaining_hours }} hours</span></h3>
+    <p class="urgent-note">We’re behind schedule — let’s push to hit atleast 73 hours!</p>
+  </div>
+{% if total_hours %}
+  <h3>Total Hours Worked </h3>
+  <ul class="hours-list">
+    {% for name, hours in total_hours.items() %}
+      <li><strong>{{ name }}:</strong> {{ hours }} hours</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if data and data|length > 0 %}
+  <div class="table-wrapper">
+    <table class="summary-table">
+      <tr>
+        <th>User</th>
+        <th>Action</th>
+        <th>Time</th>
+        <th>Project</th>
+        <th>Tasks</th>
+        <th>Photo</th>
+        {% if is_admin %}
+          <th>Delete</th>
+        {% endif %}
+      </tr>
+      {% for row in entries %}
+        <tr>
+          <td>{{ row['user'] }}</td>
+          <td>{{ row['action'] }}</td>
+          <td>{{ row['timestamp'] }}</td>
+          <td>{{ row.project }}</td>
+          <td>{{ row['tasks'] }}</td>
+          <td>
+            {% if row['photo'] and (row['photo'] in photos) %}
+              <img src="{{ url_for('static', filename='photos/' ~ row['photo']) }}" alt="Photo" class="photo-thumb">
+            {% else %}
+              <span class="no-image">No Image</span>
+            {% endif %}
+          </td>
+          {% if is_admin %}
+            <td>
+              <form method="post" action="/delete">
+                <input type="hidden" name="user" value="Admin">
+                <input type="hidden" name="pin" value="Admin">
+                <input type="hidden" name="timestamp" value="{{ row.timestamp }}">
+                <button type="submit" class="delete-button">🗑️</button>
+              </form>
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+{% else %}
+  <div class="no-records">
+    <strong>No records found for this week.</strong><br>
+    Once contractors begin logging time, their entries will appear here.
+  </div>
+{% endif %}
+  <form method="get" action="/dashboard">
+    <label for="limit">Entries per page:</label>
+    <select name="limit" onchange="this.form.submit()">
+      <option value="10" {% if limit == 10 %}selected{% endif %}>10</option>
+      <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+      <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+    </select>
+  </form>
+
+<a href="/" class="back-button">
+  <button>← Back to Clock-In</button>
+</a>
+
+<div class="warning">
+  ⏰ <strong>Reminder:</strong> All time logs must be submitted before <strong>7:00 PM</strong> daily to be counted toward the weekly summary.
+</div>
+
+</body>
+</html>

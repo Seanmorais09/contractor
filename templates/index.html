@@ -1,1 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Timesheet- Everett Project</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
 
+<h2>Timesheet for Everett Project</h2>
+
+<form method="POST" action="/clock" enctype="multipart/form-data" class="clock-form">
+  <label for="user">Contractor:</label>
+  <select name="user" required>
+    <option value="Tony">Tony</option>
+    <option value="Hector">Hector</option>
+    <option value="Dad">Dad</option>
+    <option value="Louis">Louis</option>
+    <option value="Sean">Sean</option>
+    <option value="Daniel">Daniel</option>
+  </select>
+
+  <label for="pin">PIN:</label>
+  <input type="password" name="pin" required>
+
+  <label for="action">Action:</label>
+  <select name="action" required>
+    <option value="in">Clock-In</option>
+    <option value="out">Clock-Out</option>
+  </select>
+  <!-- Hidden field to store the current time -->
+  <label for="project">Select Project:</label>
+  <select name="project" required>
+    <option value="">-- Choose a Project --</option>
+    {% for project in projects %}
+      <option value="{{ project }}">{{ project }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="tasks">Tasks:</label>
+  <textarea name="tasks" rows="3" required placeholder="Enter completion task for today"></textarea>
+  <!-- Photo upload field, initially hidden -->
+  <label for="photo" class="photo-label">Upload Photo (optional):</label>
+  <input type="file" name="photo" accept="image/*" class="photo-input">
+
+  <button type="submit">Submit</button>
+  
+  <div class="warning">
+    ⏰ <strong>Reminder:</strong> All time logs must be submitted before <strong>7:00 PM</strong> daily to be counted toward the weekly summary.
+  </div>
+</form>
+
+  <form method="POST" action="/dashboard" class="dashboard-access-form">
+    <input type="password" name="pin" placeholder="Enter PIN to view dashboard" required>
+    <button type="submit" class="dashboard-button">📊 Weekly Dashboard</button>
+  </form>
+  
+</body>
+</html>
