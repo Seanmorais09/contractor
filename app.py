@@ -321,7 +321,29 @@ def delete_entry():
     except Exception as e:
         return f"Error deleting entry: {e}", 500
 
+@app.route('/edit/<timestamp>', methods=['GET', 'POST'])
+def edit_entry(timestamp):
+    df = pd.read_csv('timelogs.csv', names=['user', 'action', 'timestamp', 'tasks', 'photo', 'project'])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
+    entry = df[df['raw_timestamp'] == timestamp].iloc[0].to_dict()
+
+    if request.method == 'POST':
+        # Update entry with form data
+        entry['user'] = request.form['user']
+        entry['action'] = request.form['action']
+        entry['tasks'] = request.form['tasks']
+        entry['project'] = request.form['project']
+
+        # Replace in DataFrame
+        df.loc[df['raw_timestamp'] == timestamp, ['user', 'action', 'tasks', 'project']] = \
+            entry['user'], entry['action'], entry['tasks'], entry['project']
+
+        df.to_csv('timelogs.csv', index=False, header=False)
+        return redirect(url_for('dashboard'))
+
+    return render_template('edit.html', entry=entry)
 @app.route('/clock', methods=['POST'])
 def clock():
     user = request.form['user'].strip().title()
