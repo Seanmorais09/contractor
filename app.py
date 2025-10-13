@@ -74,17 +74,26 @@ def get_weekly_summary():
         df = pd.read_sql_query('SELECT * FROM timelogs', conn)
         conn.close()
 
-        # Convert to datetime first
+        if df.empty:
+            return []
+
+        # Parse timestamps
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
 
-        # Store raw timestamp for delete matching
+        if df.empty:
+            return []
+
+        # Store raw timestamp for delete/edit matching
         df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
         current_week = datetime.now(pacific).isocalendar().week
         df = df[df['week'] == current_week]
+
+        if df.empty:
+            return []
 
         # Format for display
         df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %I:%M %p')
@@ -100,19 +109,27 @@ def get_weekly_summary():
 # ✅ Total hours calculator
 def get_total_hours():
     try:
-        # Read from SQLite instead of CSV
         conn = sqlite3.connect('timelogs.db')
         df = pd.read_sql_query('SELECT * FROM timelogs', conn)
         conn.close()
 
-        # Convert to datetime
+        if df.empty:
+            return {}
+
+        # Parse timestamps
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
+
+        if df.empty:
+            return {}
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
         current_week = datetime.now(pacific).isocalendar().week
         df = df[df['week'] == current_week]
+
+        if df.empty:
+            return {}
 
         df = df.sort_values(by=['user', 'timestamp'])
 
@@ -130,7 +147,7 @@ def get_total_hours():
                     total += row['timestamp'] - clocked_in
                     clocked_in = None
 
-            # ✅ If still clocked in, count time up to now
+            # If still clocked in, count up to now
             if clocked_in:
                 total += datetime.now(pacific) - clocked_in
 
@@ -140,9 +157,7 @@ def get_total_hours():
 
     except Exception as e:
         print(f"Error in get_total_hours: {e}")
-        return {}    
-
-
+        return {}
 
 # ✅ Routes
 @app.route('/')
