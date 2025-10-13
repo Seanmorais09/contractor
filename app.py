@@ -76,14 +76,20 @@ def get_weekly_summary():
         if df.empty:
             return []
 
-        # Parse timestamps
+      # Parse timestamps
         df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
         df = df.dropna(subset=['timestamp'])
-
+        
         if df.empty:
             return []
 
-        # Store raw timestamp for delete/edit matching
+    # Make sure all timestamps are tz-aware in Pacific
+        if df['timestamp'].dt.tz is None:
+            df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
+        else:
+            df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
+        
+     # Store raw timestamp for delete/edit matching
         df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
         # Filter by current week
@@ -114,13 +120,20 @@ def get_total_hours():
 
         if df.empty:
             return {}
+# Parse timestamps
+    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+    df = df.dropna(subset=['timestamp'])
+    
+    if df.empty:
+        return []
 
-        # Parse timestamps
-        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-        df = df.dropna(subset=['timestamp'])
-
-        if df.empty:
-            return {}
+# Ensure all timestamps are tz-aware in Pacific
+    if df['timestamp'].dt.tz is None:
+        df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
+    else:
+        df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
+            if df.empty:
+                return {}
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
@@ -173,8 +186,6 @@ def dashboard():
     today_date = datetime.now(pacific).strftime(
         '%B %d, %Y')  # Example: October 6, 2025
     selected_week = request.args.get('week')  # format: YYYY-MM-DD
-
-    today = datetime.now(pacific)
 
     today = datetime.now(pacific)
 
