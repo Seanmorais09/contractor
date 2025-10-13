@@ -127,40 +127,6 @@ def get_total_hours():
         return {}
 
 
-# ✅ IP restriction middleware
-ALLOW_ALL = True  # Set to False to re-enable restriction
-
-@app.before_request
-def restrict_by_ip():
-    if ALLOW_ALL:
-        return
-
-    forwarded_for = request.headers.get('X-Forwarded-For', '')
-    ip = forwarded_for.split(',')[0] if forwarded_for else request.remote_addr
-    print(f"Detected IP: {ip}")
-
-    if request.endpoint == 'static':
-        return
-
-    if request.endpoint in ['home', 'clock', 'dashboard']:
-        if ip == ALLOWED_IP:
-            return
-        else
-            return """
-            <html>
-            <head>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <link rel="stylesheet" href="/static/style.css">
-            </head>
-            <body class="access-denied">
-              <div class="access-wrapper">
-                <h3>⛔ Access Denied</h3>
-                <p>You are not connected to the job site Wi-Fi.</p>
-                <a href="/">Back to Home</a>
-              </div>
-            </body>
-            </html>
-            """, 403
 
 
 # ✅ Routes
