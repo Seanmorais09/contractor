@@ -132,8 +132,9 @@ def get_total_hours():
             df['timestamp'] = df['timestamp'].dt.tz_localize('US/Pacific')
         else:
             df['timestamp'] = df['timestamp'].dt.tz_convert('US/Pacific')
-                if df.empty:
-                    return {}
+            
+        if df.empty:
+            return {}
 
         # Filter by current week
         df['week'] = df['timestamp'].dt.isocalendar().week
