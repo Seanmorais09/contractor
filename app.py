@@ -343,12 +343,11 @@ def delete_entry():
         return "⛔ Unauthorized. Only Admin can delete entries.", 403
 
     try:
-        from urllib.parse import unquote
-        timestamp = unquote(request.form.get('timestamp'))
+        entry_id = int(request.form.get('id'))
 
         conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM timelogs WHERE timestamp = ?', (timestamp,))
+        cursor.execute('DELETE FROM timelogs WHERE id = ?', (entry_id,))
         conn.commit()
         conn.close()
 
@@ -356,23 +355,19 @@ def delete_entry():
     except Exception as e:
         return f"Error deleting entry: {e}", 500
 
-@app.route('/edit/<path:timestamp>', methods=['GET', 'POST'])
-def edit_entry(timestamp):
+@app.route('/edit/<int:entry_id>', methods=['GET', 'POST'])
+def edit_entry(entry_id):
     logged_in_user = session.get('user')
     if logged_in_user != "Admin":
         return "⛔ Unauthorized. Only Admin can edit entries.", 403
 
-    timestamp = unquote(timestamp)  # Decode URL-safe string
     conn = sqlite3.connect('timelogs.db')
     df = pd.read_sql_query('SELECT * FROM timelogs', conn)
     conn.close()
 
-    df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-    df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
-
-    match = df[df['raw_timestamp'] == timestamp]
+    match = df[df['id'] == entry_id]
     if match.empty:
-        return f"<h3>No entry found for timestamp: {timestamp}</h3>", 404
+        return f"<h3>No entry found for ID: {entry_id}</h3>", 404
 
     entry = match.iloc[0].to_dict()
 
@@ -387,14 +382,15 @@ def edit_entry(timestamp):
         cursor.execute('''
             UPDATE timelogs
             SET user = ?, action = ?, tasks = ?, project = ?
-            WHERE timestamp = ?
-        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], timestamp))
+            WHERE id = ?
+        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], entry_id))
         conn.commit()
         conn.close()
 
         return redirect(url_for('dashboard'))
 
     return render_template('edit.html', entry=entry)
+    
 @app.route('/clock', methods=['POST'])
 def clock():
     user = request.form['user'].strip().title()
