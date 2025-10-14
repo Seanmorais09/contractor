@@ -7,7 +7,7 @@ import os
 import pytz
 from collections import defaultdict
 from urllib.parse import unquote
-
+from flask import make_response
 # Initialize SQLite database
 def init_timelog_db():
     conn = sqlite3.connect('timelogs.db')
@@ -449,7 +449,11 @@ def export_db():
     conn = sqlite3.connect('timelogs.db')
     df = pd.read_sql_query('SELECT * FROM timelogs', conn)
     conn.close()
-    return df.to_csv(index=False)
+
+    response = make_response(df.to_csv(index=False))
+    response.headers["Content-Disposition"] = "attachment; filename=export_timelog.csv"
+    response.headers["Content-Type"] = "text/csv"
+    return response
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 
