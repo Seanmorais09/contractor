@@ -376,14 +376,15 @@ def edit_entry(entry_id):
         entry['action'] = request.form['action']
         entry['tasks'] = request.form['tasks']
         entry['project'] = request.form['project']
+        entry['timestamp'] = request.form['timestamp'].strip()
 
         conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE timelogs
-            SET user = ?, action = ?, tasks = ?, project = ?
+            SET user = ?, action = ?, tasks = ?, project = ?, timestamp = ?
             WHERE id = ?
-        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], entry_id))
+        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], entry['timestamp'], entry_id))
         conn.commit()
         conn.close()
 
