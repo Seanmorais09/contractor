@@ -8,24 +8,30 @@
 <body>
   <h2>Edit Time Log Entry</h2>
 
-  <form method="post">
-    <label for="user">User:</label>
-    <input type="text" id="user" name="user" value="{{ entry.user }}" required>
+<form method="post">
+  <label for="user">User:</label>
+  <input type="text" id="user" name="user" value="{{ entry.user }}" required>
 
-    <label for="action">Action:</label>
-    <select id="action" name="action" required>
-      <option value="in" {% if entry.action == 'in' %}selected{% endif %}>Clock In</option>
-      <option value="out" {% if entry.action == 'out' %}selected{% endif %}>Clock Out</option>
-    </select>
+  <label for="action">Action:</label>
+  <select id="action" name="action" required>
+    <option value="in" {% if entry.action == 'in' %}selected{% endif %}>Clock In</option>
+    <option value="out" {% if entry.action == 'out' %}selected{% endif %}>Clock Out</option>
+  </select>
 
-    <label for="tasks">Tasks:</label>
-    <textarea id="tasks" name="tasks" rows="3">{{ entry.tasks }}</textarea>
+  <label for="tasks">Tasks:</label>
+  <textarea id="tasks" name="tasks" rows="3">{{ entry.tasks }}</textarea>
 
-    <label for="project">Project:</label>
-    <input type="text" id="project" name="project" value="{{ entry.project }}">
+  <label for="project">Project:</label>
+  <input type="text" id="project" name="project" value="{{ entry.project }}">
 
-    <button type="submit">Save Changes</button>
-  </form>
+  <!-- ✅ Add this timestamp field here -->
+  <label for="timestamp">Timestamp:</label>
+  <input type="text" id="timestamp" name="timestamp" value="{{ entry.timestamp }}"
+         pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}" required>
+  <small>Format: YYYY-MM-DD HH:MM:SS</small>
+
+  <button type="submit">Save Changes</button>
+</form>
 
   <br>
   <a href="{{ url_for('dashboard') }}"><button>← Back to Dashboard</button></a>
