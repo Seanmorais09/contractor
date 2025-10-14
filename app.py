@@ -446,6 +446,13 @@ def clock():
     </body>
     </html>
     """
+
+@app.route('/export')
+def export_db():
+    conn = sqlite3.connect('timelogs.db')
+    df = pd.read_sql_query('SELECT * FROM timelogs', conn)
+    conn.close()
+    return df.to_csv(index=False)
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 
