@@ -1,18 +1,33 @@
-<form method="POST">
-  <label>User:</label>
-  <input type="text" name="user" value="{{ entry['user'] }}" required>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Entry</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h2>Edit Time Log Entry</h2>
 
-  <label>Action:</label>
-  <select name="action">
-    <option value="in" {% if entry['action'] == 'in' %}selected{% endif %}>In</option>
-    <option value="out" {% if entry['action'] == 'out' %}selected{% endif %}>Out</option>
-  </select>
+  <form method="post">
+    <label for="user">User:</label>
+    <input type="text" id="user" name="user" value="{{ entry.user }}" required>
 
-  <label>Tasks:</label>
-  <input type="text" name="tasks" value="{{ entry['tasks'] }}">
+    <label for="action">Action:</label>
+    <select id="action" name="action" required>
+      <option value="in" {% if entry.action == 'in' %}selected{% endif %}>Clock In</option>
+      <option value="out" {% if entry.action == 'out' %}selected{% endif %}>Clock Out</option>
+    </select>
 
-  <label>Project:</label>
-  <input type="text" name="project" value="{{ entry['project'] }}">
+    <label for="tasks">Tasks:</label>
+    <textarea id="tasks" name="tasks" rows="3">{{ entry.tasks }}</textarea>
 
-  <button type="submit">Save Changes</button>
-</form>
+    <label for="project">Project:</label>
+    <input type="text" id="project" name="project" value="{{ entry.project }}">
+
+    <button type="submit">Save Changes</button>
+  </form>
+
+  <br>
+  <a href="{{ url_for('dashboard') }}"><button>← Back to Dashboard</button></a>
+</body>
+</html>
