@@ -354,7 +354,7 @@ def delete_entry():
     except Exception as e:
         return f"Error deleting entry: {e}", 500
 
-@app.route('/edit/<timestamp>', methods=['GET', 'POST'])
+@app.route('/edit/<path:timestamp>', methods=['GET', 'POST'])
 def edit_entry(timestamp):
     # Load the entry from SQLite
     conn = sqlite3.connect('timelogs.db')
@@ -366,7 +366,12 @@ def edit_entry(timestamp):
     df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     # Find the entry that matches the timestamp
-    entry = df[df['raw_timestamp'] == timestamp].iloc[0].to_dict()
+    match = df[df['raw_timestamp'] == timestamp]
+
+    if match.empty:
+        return f"<h3>No entry found for timestamp: {timestamp}</h3>", 404
+
+    entry = match.iloc[0].to_dict()
 
     if request.method == 'POST':
         # Update entry with form data
@@ -375,14 +380,14 @@ def edit_entry(timestamp):
         entry['tasks'] = request.form['tasks']
         entry['project'] = request.form['project']
 
-        # Update the database instead of CSV
+        # Update the database
         conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE timelogs
             SET user = ?, action = ?, tasks = ?, project = ?
             WHERE timestamp = ?
-        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], timestamp))
+        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], entry['raw_timestamp']))
         conn.commit()
         conn.close()
 
