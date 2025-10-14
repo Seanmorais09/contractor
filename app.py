@@ -343,7 +343,8 @@ def delete_entry():
         return "⛔ Unauthorized. Only Admin can delete entries.", 403
 
     try:
-        timestamp = request.form.get('timestamp')
+        from urllib.parse import unquote
+        timestamp = unquote(request.form.get('timestamp'))
 
         conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
@@ -357,8 +358,11 @@ def delete_entry():
 
 @app.route('/edit/<path:timestamp>', methods=['GET', 'POST'])
 def edit_entry(timestamp):
-    timestamp = unquote(timestamp)  # ✅ decode URL-encoded timestamp
+    logged_in_user = session.get('user')
+    if logged_in_user != "Admin":
+        return "⛔ Unauthorized. Only Admin can edit entries.", 403
 
+    timestamp = unquote(timestamp)  # Decode URL-safe string
     conn = sqlite3.connect('timelogs.db')
     df = pd.read_sql_query('SELECT * FROM timelogs', conn)
     conn.close()
@@ -367,14 +371,13 @@ def edit_entry(timestamp):
     df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     match = df[df['raw_timestamp'] == timestamp]
-
     if match.empty:
         return f"<h3>No entry found for timestamp: {timestamp}</h3>", 404
 
     entry = match.iloc[0].to_dict()
 
     if request.method == 'POST':
-        entry['user'] = request.form['user']
+        entry['user'] = request.form['user'].strip().title()
         entry['action'] = request.form['action']
         entry['tasks'] = request.form['tasks']
         entry['project'] = request.form['project']
@@ -401,21 +404,7 @@ def clock():
     project = request.form.get('project')
 
     if VALID_PINS.get(user) != pin:
-        return """ 
-        <html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body class="pin-error">
-  <main class="pin-error-wrapper">
-    <h3>⛔ Invalid PIN</h3>
-    <p>Clock-in/out failed. Please check your PIN and try again.</p>
-    <a href="/">Back to Home</a>
-  </main>
-</body>
-</html>
-        """, 403
+        return render_template("403.html"), 403
 
     photo_filename = ''
     photo = request.files.get('photo')
@@ -432,12 +421,10 @@ def clock():
         cursor.execute('''
             INSERT INTO timelogs (user, action, timestamp, tasks, photo, project)
             VALUES (?, ?, ?, ?, ?, ?)
-            ''', (user, action, timestamp, tasks, photo_filename, project))
+        ''', (user, action, timestamp, tasks, photo_filename, project))
         conn.commit()
         conn.close()
-        print(
-            f"✅ Saved : {user}, {action}, {timestamp}, {tasks}, {photo_filename},{project}"
-        )
+        print(f"✅ Saved: {user}, {action}, {timestamp}, {tasks}, {photo_filename}, {project}")
     except Exception as e:
         print(f"❌ DB write failed: {e}")
         return "<h3>Error saving entry. Please try again.</h3><a href='/'>Back</a>"
@@ -459,7 +446,6 @@ def clock():
     </body>
     </html>
     """
-
-
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True) 
