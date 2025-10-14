@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import pytz
 from collections import defaultdict
+from urllib.parse import unquote
 
 # Initialize SQLite database
 def init_timelog_db():
@@ -356,16 +357,15 @@ def delete_entry():
 
 @app.route('/edit/<path:timestamp>', methods=['GET', 'POST'])
 def edit_entry(timestamp):
-    # Load the entry from SQLite
+    timestamp = unquote(timestamp)  # ✅ decode URL-encoded timestamp
+
     conn = sqlite3.connect('timelogs.db')
     df = pd.read_sql_query('SELECT * FROM timelogs', conn)
     conn.close()
 
-    # Ensure timestamp is parsed
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df['raw_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    # Find the entry that matches the timestamp
     match = df[df['raw_timestamp'] == timestamp]
 
     if match.empty:
@@ -374,20 +374,18 @@ def edit_entry(timestamp):
     entry = match.iloc[0].to_dict()
 
     if request.method == 'POST':
-        # Update entry with form data
         entry['user'] = request.form['user']
         entry['action'] = request.form['action']
         entry['tasks'] = request.form['tasks']
         entry['project'] = request.form['project']
 
-        # Update the database
         conn = sqlite3.connect('timelogs.db')
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE timelogs
             SET user = ?, action = ?, tasks = ?, project = ?
             WHERE timestamp = ?
-        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], entry['raw_timestamp']))
+        ''', (entry['user'], entry['action'], entry['tasks'], entry['project'], timestamp))
         conn.commit()
         conn.close()
 
