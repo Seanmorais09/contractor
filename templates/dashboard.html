@@ -41,6 +41,7 @@
 <form method="get" action="/dashboard">
   <button type="submit">Clear Filters</button>
 </form>
+  
 
 {% if daily_summary %}
   <h3>Hours Per Day</h3>
@@ -119,6 +120,9 @@
     Once contractors begin logging time, their entries will appear here.
   </div>
 {% endif %}
+  <a href="{{ url_for('export_db') }}">
+  <button class="download-button">📥 Download CSV</button>
+</a>
   <form method="get" action="/dashboard">
     <label for="limit">Entries per page:</label>
     <select name="limit" onchange="this.form.submit()">
