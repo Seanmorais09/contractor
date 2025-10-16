@@ -1,8 +1,8 @@
-Flask==2.3.3
-pandas==2.2.2
-Werkzeug==2.3.7
-firebase-admin==6.4.0
-google-cloud-firestore==2.16.1
-google-cloud-storage==2.16.0
-pytz==2024.1
-gunicorn==21.2.0  # Needed for deployment on Render
+Flask
+pandas
+Werkzeug
+firebase-admin
+google-cloud-firestore
+google-cloud-storage
+pytz
+gunicorn  # Needed for deployment on Render
