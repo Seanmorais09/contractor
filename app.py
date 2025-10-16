@@ -97,39 +97,44 @@ def get_weekly_summary():
         return []
 
 def get_total_hours():
-    try:
-        print("Running get_total_hours()")
-        items = load_timelogs_from_firestore()
-        if not items:
-            return {}
-        df = pd.DataFrame(items)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('US/Pacific')
+   try:
+    print("Running get_total_hours()")
+    items = load_timelogs_from_firestore()
+    if not items:
+        return {"message": "No time log data found for the current week."}
 
-        df['week'] = df['timestamp'].dt.isocalendar().week
-        current_week = datetime.now(pacific).isocalendar().week
-        df = df[df['week'] == current_week]
-        if df.empty:
-            return {}
+    df = pd.DataFrame(items)
+    df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('US/Pacific')
 
-        df = df.sort_values(by=['user', 'timestamp'])
-        total_hours = {}
-        for user in df['user'].unique():
-            user_df = df[df['user'] == user]
-            clocked_in = None
-            total = pd.Timedelta(0)
-            for _, row in user_df.iterrows():
-                if row['action'].lower() == 'in':
-                    clocked_in = row['timestamp']
-                elif row['action'].lower() == 'out' and clocked_in:
-                    total += row['timestamp'] - clocked_in
-                    clocked_in = None
-            if clocked_in:
-                total += datetime.now(pacific) - clocked_in
-            total_hours[user] = round(total.total_seconds() / 3600, 2)
-        return total_hours
-    except Exception as e:
-        print("Error in get_total_hours:", e)
-        return {}
+    df['week'] = df['timestamp'].dt.isocalendar().week
+    current_week = datetime.now(pacific).isocalendar().week
+    df = df[df['week'] == current_week]
+    if df.empty:
+        return {"message": "No time log data found for the current week."}
+
+    df = df.sort_values(by=['user', 'timestamp'])
+    total_hours = {}
+    for user in df['user'].unique():
+        user_df = df[df['user'] == user]
+        clocked_in = None
+        total = pd.Timedelta(0)
+        for _, row in user_df.iterrows():
+            if row['action'].lower() == 'in':
+                clocked_in = row['timestamp']
+            elif row['action'].lower() == 'out' and clocked_in:
+                total += row['timestamp'] - clocked_in
+                clocked_in = None
+        if clocked_in:
+            total += datetime.now(pacific) - clocked_in
+        total_hours[user] = round(total.total_seconds() / 3600, 2)
+
+    total_sum = round(sum(total_hours.values()), 2)
+    return {'per_user': total_hours, 'total_sum': total_sum}
+
+except Exception as e:
+    print("Error in get_total_hours:", e)
+    return {"message": "An error occurred while calculating total hours."}
+
 
 # ————— Routes —————
 
