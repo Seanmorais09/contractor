@@ -65,13 +65,17 @@
     <p class="urgent-note">We’re behind schedule — let’s push to hit atleast 73 hours!</p>
   </div>
 {% if total_hours %}
-  <h3>Total Hours Worked </h3>
+  <h3>Total Hours Worked</h3>
   <ul class="hours-list">
     {% for name, hours in total_hours.items() %}
       <li><strong>{{ name }}:</strong> {{ hours }} hours</li>
     {% endfor %}
   </ul>
+{% else %}
+  <p>No hours logged for the selected filters.</p>
 {% endif %}
+
+<p><strong>Grand Total Hours This Week:</strong> {{ grand_total_hours }} hours</p>
 
 {% if data and data|length > 0 %}
   <div class="table-wrapper">
