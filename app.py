@@ -98,6 +98,7 @@ def get_weekly_summary():
 
 def get_total_hours():
     try:
+        print("Running get_total_hours()")
         items = load_timelogs_from_firestore()
         if not items:
             return {}
