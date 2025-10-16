@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Flask==2.3.3
 pandas==2.2.2
 Werkzeug==2.3.7
@@ -7,3 +8,13 @@ google-cloud-storage==2.16.0
 pytz==2024.1
 gunicorn==21.2.0  # Needed for deployment on Render
 
+=======
+flask
+pandas
+cryptography
+pytz
+werkzeug
+gunicorn
+firebase-admin
+google-cloud-storage
+>>>>>>> 33baeb532c376e70e1c176f883e2f35f68122bd7
