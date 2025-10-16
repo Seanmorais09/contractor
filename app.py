@@ -62,7 +62,7 @@ pacific = pytz.timezone('US/Pacific')
 
 def load_timelogs_from_firestore():
     """Load all timelog entries from Firestore as list of dicts."""
-    docs = db.collection('timelogs').stream()
+    docs = db.collection('timelog').stream()
     items = []
     for doc in docs:
         data = doc.to_dict()
@@ -305,7 +305,7 @@ def clock():
     }
 
     try:
-        doc_ref = db.collection('timelogs').document(str(uuid.uuid4()))
+        doc_ref = db.collection('timelog').document(str(uuid.uuid4()))
         doc_ref.set(entry)
     except Exception as e:
         print("Firestore write failed:", e)
