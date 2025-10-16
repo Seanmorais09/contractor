@@ -24,7 +24,7 @@
   </select>
 
   <label for="week">Select Week (Sunday):</label>
-  <input type="date" name="week" id="week" value="{{ start_of_week }}">
+  <input type="date" name="week" id="week" value="{{ selected_week }}">
 
   <label for="project">Filter by Project:</label>
   <select name="project" id="project">
@@ -41,7 +41,6 @@
 <form method="get" action="/dashboard">
   <button type="submit">Clear Filters</button>
 </form>
-  
 
 {% if daily_summary %}
   <h3>Hours Per Day</h3>
@@ -52,18 +51,21 @@
   </ul>
 {% endif %}
 
-  <h3>Weekly Hours by Contractor </h3>
-  <p>Total for this week {{ week_ending }} as of: {{ today_date }}</p>
+<h3>Weekly Hours by Contractor</h3>
+<p>Total for this week {{ week_ending }} as of: {{ today }}</p>
 <ul>
   {% for entry in weekly_summary %}
     <li>{{ entry.contractor }}: {{ entry.formatted }}</li>
   {% endfor %}
 </ul>
-<p>Grand Total Hours This Week: {{ grand_total_hours }} hours</p>
-  <div class="warning-box">
-    <h3>⚠️ Remaining Hours For Bank: <span class="highlight">{{ remaining_hours }} hours</span></h3>
-    <p class="urgent-note">We’re behind schedule — let’s push to hit atleast 73 hours!</p>
-  </div>
+
+<p><strong>Grand Total Hours This Week:</strong> {{ grand_total_hours }} hours</p>
+
+<div class="warning-box">
+  <h3>⚠️ Remaining Hours For Bank: <span class="highlight">{{ remaining_hours }} hours</span></h3>
+  <p class="urgent-note">We’re behind schedule — let’s push to hit at least 73 hours!</p>
+</div>
+
 {% if total_hours %}
   <h3>Total Hours Worked</h3>
   <ul class="hours-list">
@@ -74,8 +76,6 @@
 {% else %}
   <p>No hours logged for the selected filters.</p>
 {% endif %}
-
-<p><strong>Grand Total Hours This Week:</strong> {{ grand_total_hours }} hours</p>
 
 {% if data and data|length > 0 %}
   <div class="table-wrapper">
@@ -95,23 +95,23 @@
         <tr>
           <td>{{ row['user'] }}</td>
           <td>{{ row['action'] }}</td>
-          <td>{{ row['timestamp'] }}</td>
-          <td>{{ row.project }}</td>
+          <td>{{ row['formatted_timestamp'] }}</td>
+          <td>{{ row['project'] }}</td>
           <td>{{ row['tasks'] }}</td>
           <td>
-            {% if row['photo'] and (row['photo'] in photos) %}
-              <img src="{{ url_for('static', filename='photos/' ~ row['photo']) }}" alt="Photo" class="photo-thumb">
+            {% if row['photo_url'] %}
+              <img src="{{ row['photo_url'] }}" alt="Photo" class="photo-thumb">
             {% else %}
               <span class="no-image">No Image</span>
             {% endif %}
           </td>
           {% if is_admin %}
             <td>
-             <form method="post" action="/delete">
-                <input type="hidden" name="id" value="{{ row.id }}">
+              <form method="post" action="/delete">
+                <input type="hidden" name="id" value="{{ row['id'] }}">
                 <button type="submit" class="delete-button">🗑️</button>
-            </form>
-              <a href="{{ url_for('edit_entry', entry_id=row['id']) }}" class="btn btn-edit">Edit</a>           
+              </form>
+              <a href="{{ url_for('edit_entry', entry_id=row['id']) }}" class="btn btn-edit">Edit</a>
             </td>
           {% endif %}
         </tr>
@@ -124,17 +124,19 @@
     Once contractors begin logging time, their entries will appear here.
   </div>
 {% endif %}
-  <a href="{{ url_for('export_db') }}">
+
+<a href="{{ url_for('export_db') }}">
   <button class="download-button">📥 Download CSV</button>
 </a>
-  <form method="get" action="/dashboard">
-    <label for="limit">Entries per page:</label>
-    <select name="limit" onchange="this.form.submit()">
-      <option value="10" {% if limit == 10 %}selected{% endif %}>10</option>
-      <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
-      <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
-    </select>
-  </form>
+
+<form method="get" action="/dashboard">
+  <label for="limit">Entries per page:</label>
+  <select name="limit" onchange="this.form.submit()">
+    <option value="10" {% if limit == 10 %}selected{% endif %}>10</option>
+    <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+    <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+  </select>
+</form>
 
 <a href="/" class="back-button">
   <button>← Back to Clock-In</button>

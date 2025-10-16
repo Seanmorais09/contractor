@@ -189,6 +189,8 @@ def dashboard():
             daily_summary = []
             weekly_summary = []
             remaining_hours = 80
+            total_hours = {}
+            grand_total_hours = 0.0
         else:
             df_full['timestamp'] = pd.to_datetime(df_full['timestamp'], utc=True).dt.tz_convert('US/Pacific')
             df_full['project'] = df_full['project'].fillna("-").astype(str)
@@ -220,6 +222,7 @@ def dashboard():
             for entry in sessions:
                 key = (entry['date'], entry['contractor'])
                 daily_minutes[key] += entry['duration']
+
             daily_summary = []
             for (date, contractor), minutes in sorted(daily_minutes.items(), reverse=True):
                 hours = int(minutes // 60)
@@ -233,6 +236,7 @@ def dashboard():
             weekly_totals = defaultdict(float)
             for entry in sessions:
                 weekly_totals[entry['contractor']] += entry['duration']
+
             weekly_summary = []
             for contractor in VALID_PINS.keys():
                 minutes = weekly_totals.get(contractor, 0)
@@ -243,8 +247,8 @@ def dashboard():
                     'formatted': f"{hours}h {mins}m"
                 })
 
-            grand_total_minutes = sum(weekly_totals.values())
-            grand_total_hours = round(grand_total_minutes / 60, 2)
+            total_hours = {user: round(minutes / 60, 2) for user, minutes in weekly_totals.items()}
+            grand_total_hours = round(sum(total_hours.values()), 2)
             remaining_hours = round(80 - grand_total_hours, 2)
 
             df = weekly_df.copy()
@@ -253,10 +257,16 @@ def dashboard():
             if selected_project:
                 df = df[df['project'] == selected_project]
 
-            df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %I:%M %p')
-            # raw_timestamp for sorting or further use
-            df['raw_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+            df = df.dropna(subset=['timestamp', 'user'])
+            df['formatted_timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %I:%M %p')
+
             entries = df.to_dict(orient='records')
+            entries = [e for e in entries if isinstance(e, dict)]
+
+            for i, entry in enumerate(entries):
+                if not isinstance(entry, dict):
+                    print(f"Entry {i} is not a dict:", entry)
+
             users = sorted(set(df_full['user']))
 
         return render_template('dashboard.html',
@@ -265,7 +275,8 @@ def dashboard():
                                projects=PROJECTS,
                                daily_summary=daily_summary,
                                weekly_summary=weekly_summary,
-                               total_hours=round(grand_total_hours, 2),
+                               total_hours=total_hours,
+                               grand_total_hours=grand_total_hours,
                                remaining_hours=remaining_hours,
                                logged_in_user=logged_in_user,
                                is_admin=is_admin,
