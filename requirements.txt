@@ -5,3 +5,4 @@ pytz
 werkzeug
 gunicorn
 firebase-admin
+google-cloud-storage
