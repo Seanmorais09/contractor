@@ -250,7 +250,7 @@ def dashboard():
 
             df['timestamp'] = df['timestamp'].dt.strftime('%Y-%m-%d %I:%M %p')
             # raw_timestamp for sorting or further use
-            df['raw_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+            df['raw_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
             entries = df.to_dict(orient='records')
             users = sorted(set(df_full['user']))
 
