@@ -328,6 +328,59 @@ def clock():
     </body>
     </html>
     """
+@app.route('/export')
+def export_db():
+    items = load_timelogs_from_firestore()
+    if not items:
+        return "<h3>No data to export.</h3>"
+    df = pd.DataFrame(items)
+    response = make_response(df.to_csv(index=False))
+    response.headers["Content-Disposition"] = "attachment; filename=export_timelog.csv"
+    response.headers["Content-Type"] = "text/csv"
+    return response
+@app.route('/delete', methods=['POST'])
+def delete_entry():
+    logged_in_user = session.get('user')
+    if logged_in_user != "Admin":
+        return "⛔ Unauthorized. Only Admin can delete entries.", 403
+    try:
+        entry_id = request.form.get('id')
+        if not entry_id:
+            return "No entry ID provided.", 400
+        # Delete from Firestore collection 'timelogs'
+        db.collection('timelogs').document(entry_id).delete()
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        return f"Error deleting entry: {e}", 500
+
+
+@app.route('/edit/<entry_id>', methods=['GET', 'POST'])
+def edit_entry(entry_id):
+    logged_in_user = session.get('user')
+    if logged_in_user != "Admin":
+        return "⛔ Unauthorized. Only Admin can edit entries.", 403
+
+    doc_ref = db.collection('timelogs').document(entry_id)
+    doc = doc_ref.get()
+    if not doc.exists:
+        return f"<h3>No entry found for ID: {entry_id}</h3>", 404
+    entry = doc.to_dict()
+
+    if request.method == 'POST':
+        updated_data = {
+            'user': request.form['user'].strip().title(),
+            'action': request.form['action'],
+            'tasks': request.form['tasks'],
+            'project': request.form['project'],
+            'timestamp': request.form['timestamp'].strip()
+        }
+        try:
+            doc_ref.update(updated_data)
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            return f"Error updating entry: {e}", 500
+
+    return render_template('edit.html', entry=entry)
 
 @app.route('/logout')
 def logout():
