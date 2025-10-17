@@ -25,14 +25,13 @@
   <input type="text" id="project" name="project" value="{{ entry.project }}">
 
   <!-- ✅ Add this timestamp field here -->
-  <label for="timestamp">Timestamp:</label>
-  <input type="text" id="timestamp" name="timestamp" value="{{ entry.timestamp }}"
-         pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}" required>
-  <small>Format: YYYY-MM-DD HH:MM:SS</small>
+ <label for="timestamp">Timestamp:</label>
+  <input type="datetime-local" id="timestamp" name="timestamp"
+       value="{{ entry.timestamp|replace(' ', 'T') }}" required>
+  <small>Format: Local date and time (e.g., 2025-10-16T19:30)</small>
 
   <button type="submit">Save Changes</button>
 </form>
-
   <br>
   <a href="{{ url_for('dashboard') }}"><button>← Back to Dashboard</button></a>
 </body>

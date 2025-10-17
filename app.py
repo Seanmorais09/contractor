@@ -9,6 +9,8 @@ import uuid
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 
+
+
 # ————— Setup Firebase —————
 
 FIREBASE_KEY_PATH = os.getenv('FIREBASE_KEY_PATH', '/etc/secrets/firebase-key.json')
@@ -374,26 +376,53 @@ def delete_entry():
         return f"Error deleting entry: {e}", 500
 
 
+
 @app.route('/edit/<entry_id>', methods=['GET', 'POST'])
 def edit_entry(entry_id):
     logged_in_user = session.get('user')
     if logged_in_user != "Admin":
         return "⛔ Unauthorized. Only Admin can edit entries.", 403
 
+    pacific = pytz.timezone('America/Los_Angeles')
+
     doc_ref = db.collection('timelog').document(entry_id)
     doc = doc_ref.get()
     if not doc.exists:
         return f"<h3>No entry found for ID: {entry_id}</h3>", 404
+
     entry = doc.to_dict()
 
+    # --- Convert Firestore timestamp for HTML form display ---
+    ts = entry.get('timestamp')
+    if hasattr(ts, 'astimezone'):  # Firestore Timestamp object
+        entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%dT%H:%M')
+    elif isinstance(ts, str):
+        try:
+            dt = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S')
+            entry['timestamp'] = dt.strftime('%Y-%m-%dT%H:%M')
+        except ValueError:
+            entry['timestamp'] = ts  # leave unchanged if unexpected format
+
+    # --- Handle form submission ---
     if request.method == 'POST':
+        timestamp_str = request.form['timestamp'].strip()
+
+        # Try to parse the datetime-local format
+        try:
+            parsed_dt = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M')
+            pacific_dt = pacific.localize(parsed_dt)
+            utc_dt = pacific_dt.astimezone(pytz.UTC)
+        except Exception as e:
+            return f"Invalid timestamp format: {e}. Expected format like 2025-10-16T19:30.", 400
+
         updated_data = {
             'user': request.form['user'].strip().title(),
             'action': request.form['action'],
             'tasks': request.form['tasks'],
             'project': request.form['project'],
-            'timestamp': request.form['timestamp'].strip()
+            'timestamp': utc_dt  # Store timezone-aware UTC datetime
         }
+
         try:
             doc_ref.update(updated_data)
             return redirect(url_for('dashboard'))
@@ -401,6 +430,7 @@ def edit_entry(entry_id):
             return f"Error updating entry: {e}", 500
 
     return render_template('edit.html', entry=entry)
+
 
 @app.route('/logout')
 def logout():
