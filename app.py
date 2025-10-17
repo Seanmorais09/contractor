@@ -273,20 +273,21 @@ def dashboard():
                  users = []
 
         return render_template('dashboard.html',
-                               data=entries,
-                               users=users,
-                               projects=PROJECTS,
-                               daily_summary=daily_summary,
-                               weekly_summary=weekly_summary,
-                               total_hours=total_hours,
-                               grand_total_hours=grand_total_hours,
-                               remaining_hours=remaining_hours,
-                               logged_in_user=logged_in_user,
-                               is_admin=is_admin,
-                               selected_user=selected_user,
-                               selected_project=selected_project,
-                               selected_week=start_of_week.strftime('%Y-%m-%d'),
-                               today=today_date)
+                       entries=entries,  # ✅ renamed
+                       users=users,
+                       projects=PROJECTS,
+                       daily_summary=daily_summary,
+                       weekly_summary=weekly_summary,
+                       total_hours=total_hours,
+                       grand_total_hours=grand_total_hours,
+                       remaining_hours=remaining_hours,
+                       logged_in_user=logged_in_user,
+                       is_admin=is_admin,
+                       selected_user=selected_user,
+                       selected_project=selected_project,
+                       selected_week=start_of_week.strftime('%Y-%m-%d'),
+                       today_date=today_date)
+
     except Exception as e:
         print("Dashboard error:", e)
         return "<h3>There was an error loading the dashboard.</h3>", 500
@@ -367,7 +368,7 @@ def delete_entry():
         if not entry_id:
             return "No entry ID provided.", 400
         # Delete from Firestore collection 'timelogs'
-        db.collection('timelogs').document(entry_id).delete()
+        db.collection('timelog').document(entry_id).delete()
         return redirect(url_for('dashboard'))
     except Exception as e:
         return f"Error deleting entry: {e}", 500
@@ -379,7 +380,7 @@ def edit_entry(entry_id):
     if logged_in_user != "Admin":
         return "⛔ Unauthorized. Only Admin can edit entries.", 403
 
-    doc_ref = db.collection('timelogs').document(entry_id)
+    doc_ref = db.collection('timelog').document(entry_id)
     doc = doc_ref.get()
     if not doc.exists:
         return f"<h3>No entry found for ID: {entry_id}</h3>", 404
