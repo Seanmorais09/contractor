@@ -314,7 +314,7 @@ def clock():
         photo_url = blob.public_url
 
   # Save PST timestamp as string
-    timestamp = datetime.now(pacific).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.now(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
 
     entry = {
         'user': user,
@@ -402,12 +402,20 @@ def edit_entry(entry_id):
 
             
     if request.method == 'POST':
+        ts_str = request.form['timestamp'].strip()
+        try:
+            # Parse PST string and convert to UTC
+            ts_pst = pacific.localize(datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S'))
+            ts_utc = ts_pst.astimezone(pytz.utc)
+        except Exception as e:
+            return f"Invalid timestamp format: {e}", 400
+    
         updated_data = {
         'user': request.form['user'].strip().title(),
         'action': request.form['action'],
         'tasks': request.form['tasks'],
         'project': request.form['project'],
-        'timestamp': request.form['timestamp'].strip()  # PST string
+        'timestamp': ts_utc  # UTC datetime
     }
 
         try:
