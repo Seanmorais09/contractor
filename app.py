@@ -313,8 +313,8 @@ def clock():
         blob.make_public()
         photo_url = blob.public_url
 
-  # Save PST timestamp as string
-    timestamp = datetime.now(pytz.timezone('US/Pacific'))
+  # Save UTC  timestamp as string
+    timestamp = datetime.now(pytz.utc) 
     entry = {
         'user': user,
         'action': action,
