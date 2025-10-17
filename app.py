@@ -313,17 +313,18 @@ def clock():
         blob.make_public()
         photo_url = blob.public_url
 
-    # Save native datetime (timezone aware) for Firestore timestamp
-    timestamp = datetime.now(pacific)
+  # Save PST timestamp as string
+    timestamp = datetime.now(pacific).strftime('%Y-%m-%d %H:%M:%S')
 
     entry = {
         'user': user,
         'action': action,
-        'timestamp': timestamp,
+        'timestamp': timestamp,  # now stored as PST string
         'tasks': tasks,
         'photo_url': photo_url,
         'project': project
     }
+
 
     try:
         doc_ref = db.collection('timelog').document(str(uuid.uuid4()))
@@ -387,26 +388,28 @@ def edit_entry(entry_id):
     if not doc.exists:
         return f"<h3>No entry found for ID: {entry_id}</h3>", 404
     entry = doc.to_dict()
-
- # --- Convert Firestore timestamp to PST for display ---
+# --- Convert Firestore timestamp to PST string for display ---
     ts = entry.get('timestamp')
     if hasattr(ts, 'astimezone'):  # Firestore Timestamp object
         entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
     elif isinstance(ts, str):
         try:
-            dt = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S')
-            entry['timestamp'] = dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Handle ISO strings from Firestore
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            entry['timestamp'] = dt.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
         except ValueError:
             entry['timestamp'] = ts  # leave as-is if parsing fails
+
             
     if request.method == 'POST':
         updated_data = {
-            'user': request.form['user'].strip().title(),
-            'action': request.form['action'],
-            'tasks': request.form['tasks'],
-            'project': request.form['project'],
-            'timestamp': request.form['timestamp'].strip()
-        }
+        'user': request.form['user'].strip().title(),
+        'action': request.form['action'],
+        'tasks': request.form['tasks'],
+        'project': request.form['project'],
+        'timestamp': request.form['timestamp'].strip()  # PST string
+    }
+
         try:
             doc_ref.update(updated_data)
             return redirect(url_for('dashboard'))
