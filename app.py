@@ -267,7 +267,10 @@ def dashboard():
                 if not isinstance(entry, dict):
                     print(f"Entry {i} is not a dict:", entry)
 
-            users = sorted(set(df_full['user']))
+            if 'user' in df_full.columns and not df_full['user'].isnull().all():
+                 users = sorted(set(df_full['user'].dropna().unique()))
+            else:
+                 users = []
 
         return render_template('dashboard.html',
                                data=entries,
