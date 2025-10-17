@@ -380,6 +380,7 @@ def edit_entry(entry_id):
     logged_in_user = session.get('user')
     if logged_in_user != "Admin":
         return "⛔ Unauthorized. Only Admin can edit entries.", 403
+    pacific = pytz.timezone('US/Pacific')
 
     doc_ref = db.collection('timelog').document(entry_id)
     doc = doc_ref.get()
@@ -387,6 +388,17 @@ def edit_entry(entry_id):
         return f"<h3>No entry found for ID: {entry_id}</h3>", 404
     entry = doc.to_dict()
 
+ # --- Convert Firestore timestamp to PST for display ---
+    ts = entry.get('timestamp')
+    if hasattr(ts, 'astimezone'):  # Firestore Timestamp object
+        entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
+    elif isinstance(ts, str):
+        try:
+            dt = datetime.strptime(ts, '%Y-%m-%d %H:%M:%S')
+            entry['timestamp'] = dt.strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            entry['timestamp'] = ts  # leave as-is if parsing fails
+            
     if request.method == 'POST':
         updated_data = {
             'user': request.form['user'].strip().title(),
