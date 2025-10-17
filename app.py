@@ -192,7 +192,8 @@ def dashboard():
             total_hours = {}
             grand_total_hours = 0.0
         else:
-            df_full['timestamp'] = pd.to_datetime(df_full['timestamp'], utc=True).dt.tz_convert('US/Pacific')
+            df_full['timestamp'] = pd.to_datetime(df_full['timestamp'], errors='coerce', utc=True)
+            df_full['timestamp'] = df_full['timestamp'].dt.tz_convert('US/Pacific')
             df_full['project'] = df_full['project'].fillna("-").astype(str)
             df_full['user'] = df_full['user'].astype(str).str.strip().str.title()
 
