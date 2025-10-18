@@ -380,42 +380,45 @@ def edit_entry(entry_id):
     logged_in_user = session.get('user')
     if logged_in_user != "Admin":
         return "⛔ Unauthorized. Only Admin can edit entries.", 403
-    pacific = pytz.timezone('US/Pacific')
 
+    pacific = pytz.timezone('US/Pacific')
     doc_ref = db.collection('timelog').document(entry_id)
     doc = doc_ref.get()
     if not doc.exists:
         return f"<h3>No entry found for ID: {entry_id}</h3>", 404
+
     entry = doc.to_dict()
-# --- Convert Firestore timestamp to PST string for display ---
     ts = entry.get('timestamp')
-    if hasattr(ts, 'astimezone'):  # Firestore Timestamp object
+
+    # Convert stored UTC → PST for display
+    if hasattr(ts, 'astimezone'):
         entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
     elif isinstance(ts, str):
         try:
-            # Handle ISO strings from Firestore
             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
             entry['timestamp'] = dt.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
         except ValueError:
-            entry['timestamp'] = ts  # leave as-is if parsing fails
+            entry['timestamp'] = ts
 
-            
     if request.method == 'POST':
-        ts_str = request.form['timestamp'].strip()
+        # Combine date + time
+        date_str = request.form['date']
+        time_str = request.form['time']
+        ts_str = f"{date_str} {time_str}"
+
         try:
-            # Parse PST string and convert to UTC
             ts_pst = pacific.localize(datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S'))
             ts_utc = ts_pst.astimezone(pytz.utc)
         except Exception as e:
-            return f"Invalid timestamp format: {e}", 400
-    
+            return f"Invalid timestamp: {e}", 400
+
         updated_data = {
-        'user': request.form['user'].strip().title(),
-        'action': request.form['action'],
-        'tasks': request.form['tasks'],
-        'project': request.form['project'],
-        'timestamp': ts_utc  # UTC datetime
-    }
+            'user': request.form['user'].strip().title(),
+            'action': request.form['action'],
+            'tasks': request.form['tasks'],
+            'project': request.form['project'],
+            'timestamp': ts_utc
+        }
 
         try:
             doc_ref.update(updated_data)
