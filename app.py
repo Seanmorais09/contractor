@@ -183,6 +183,12 @@ def restrict_by_public_ip():
 def forbidden(e):
     return "<h3>Access restricted to authorized Wi-Fi network only.</h3>", 403
 
+@app.route('/myip')
+def my_ip():
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    client_ip = forwarded_for.split(',')[0].strip() if forwarded_for else request.remote_addr
+    return f"Client IP seen by server: {client_ip}"
+
 
 @app.route('/')
 def home():
