@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template, redirect, url_for, session, make_response
 from werkzeug.utils import secure_filename
+import requests
 from datetime import datetime, timedelta
 import os
 import pytz
@@ -8,6 +9,32 @@ from collections import defaultdict
 import uuid
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
+import requests
+from datetime import datetime, timedelta
+
+
+ALLOWED_IPS = set()
+LAST_IP_CHECK = datetime.min
+IP_CACHE_DURATION = timedelta(minutes=30)  # Check every 30 min
+
+
+def update_allowed_ip():
+    """Fetch your home's current public IP and cache it."""
+    global LAST_IP_CHECK, ALLOWED_IPS
+
+    if datetime.now() - LAST_IP_CHECK < IP_CACHE_DURATION:
+        return
+
+    try:
+        current_ip = requests.get("https://api.ipify.org").text.strip()
+        ALLOWED_IPS.clear()
+        ALLOWED_IPS.add(current_ip)
+        LAST_IP_CHECK = datetime.now()
+        print(f"[IP CHECK] Allowed IP updated to: {current_ip}")
+    except Exception as e:
+        print(f"[IP CHECK] Failed to update IP: {e}")
+
+
 
 # ————— Setup Firebase —————
 
@@ -26,6 +53,7 @@ bucket = storage.bucket()
 
 app = Flask(__name__)
 app.secret_key = 'secret_key_everett-7714'
+
 
 # Valid PINs
 VALID_PINS = {
@@ -136,6 +164,25 @@ def get_total_hours():
         return {"message": "An error occurred while calculating total hours."}
 
 # ————— Routes —————
+
+@app.before_request
+def restrict_by_public_ip():
+    update_allowed_ip()
+
+    # Render includes the real IP in X-Forwarded-For
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    client_ip = forwarded_for.split(',')[0].strip() if forwarded_for else request.remote_addr
+
+    if client_ip not in ALLOWED_IPS:
+        print(f"[ACCESS BLOCKED] {client_ip} not in {ALLOWED_IPS}")
+        return "<h3>Access denied: only accessible on company Wi-Fi.</h3>", 403
+
+
+        
+@app.errorhandler(403)
+def forbidden(e):
+    return "<h3>Access restricted to authorized Wi-Fi network only.</h3>", 403
+
 
 @app.route('/')
 def home():
