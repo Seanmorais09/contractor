@@ -304,26 +304,29 @@ def clock():
     if VALID_PINS.get(user) != pin:
         return render_template("403.html"), 403
 
+    # Handle optional photo upload
     photo = request.files.get('photo')
     photo_url = ''
     if photo and photo.filename != '':
-        photo_filename = secure_filename(f"{user}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg")
+        photo_filename = secure_filename(f"{user}_{datetime.now().strftime('%Y%m%d_%H%M')}.jpg")
         blob = bucket.blob(f'photos/{photo_filename}')
         blob.upload_from_file(photo, content_type=photo.content_type)
         blob.make_public()
         photo_url = blob.public_url
 
-  # Save UTC  timestamp as string
-    timestamp = datetime.now(pytz.utc) 
+    # --- Timestamp Handling ---
+    pacific = pytz.timezone('US/Pacific')
+    ts_pst = datetime.now(pacific).replace(second=0, microsecond=0)  # PST now, no seconds
+    ts_utc = ts_pst.astimezone(pytz.utc)  # Convert to UTC for storage
+
     entry = {
         'user': user,
         'action': action,
-        'timestamp': timestamp,  # now stored as PST string
+        'timestamp': ts_utc,   # ✅ stored in UTC with no seconds
         'tasks': tasks,
         'photo_url': photo_url,
         'project': project
     }
-
 
     try:
         doc_ref = db.collection('timelog').document(str(uuid.uuid4()))
@@ -332,7 +335,9 @@ def clock():
         print("Firestore write failed:", e)
         return "<h3>Error saving entry. Please try again.</h3><a href='/'>Back</a>"
 
-    display_time = timestamp.strftime('%I:%M %p %Z')
+    # Display time in PST (no seconds)
+    display_time = ts_pst.strftime('%I:%M %p %Z')
+
     return f"""
     <html>
     <head>
@@ -349,6 +354,7 @@ def clock():
     </body>
     </html>
     """
+
 @app.route('/export')
 def export_db():
     items = load_timelogs_from_firestore()
@@ -374,7 +380,6 @@ def delete_entry():
     except Exception as e:
         return f"Error deleting entry: {e}", 500
 
-
 @app.route('/edit/<entry_id>', methods=['GET', 'POST'])
 def edit_entry(entry_id):
     logged_in_user = session.get('user')
@@ -390,24 +395,22 @@ def edit_entry(entry_id):
     entry = doc.to_dict()
     ts = entry.get('timestamp')
 
-    # Convert stored UTC → PST for display
+    # Convert UTC -> PST for display (without seconds)
     if hasattr(ts, 'astimezone'):
-        entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
+        entry['timestamp'] = ts.astimezone(pacific).strftime('%Y-%m-%d %H:%M')
     elif isinstance(ts, str):
         try:
             dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
-            entry['timestamp'] = dt.astimezone(pacific).strftime('%Y-%m-%d %H:%M:%S')
+            entry['timestamp'] = dt.astimezone(pacific).strftime('%Y-%m-%d %H:%M')
         except ValueError:
             entry['timestamp'] = ts
 
     if request.method == 'POST':
-        # Combine date + time
         date_str = request.form['date']
-        time_str = request.form['time']
-        ts_str = f"{date_str} {time_str}"
+        time_str = request.form['time']  # only HH:MM
 
         try:
-            ts_pst = pacific.localize(datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S'))
+            ts_pst = pacific.localize(datetime.strptime(f"{date_str} {time_str}", '%Y-%m-%d %H:%M'))
             ts_utc = ts_pst.astimezone(pytz.utc)
         except Exception as e:
             return f"Invalid timestamp: {e}", 400
@@ -417,7 +420,7 @@ def edit_entry(entry_id):
             'action': request.form['action'],
             'tasks': request.form['tasks'],
             'project': request.form['project'],
-            'timestamp': ts_utc
+            'timestamp': ts_utc.replace(second=0, microsecond=0)  # ensure clean format
         }
 
         try:
@@ -427,6 +430,7 @@ def edit_entry(entry_id):
             return f"Error updating entry: {e}", 500
 
     return render_template('edit.html', entry=entry)
+
 
 @app.route('/logout')
 def logout():

@@ -24,12 +24,12 @@
     <label for="project">Project:</label>
     <input type="text" id="project" name="project" value="{{ entry.project }}">
 
-    <!-- ✅ Use date and time pickers -->
+    <!-- ✅ Use date and time pickers (no seconds) -->
     <label for="date">Date (PST):</label>
     <input type="date" id="date" name="date" value="{{ entry.timestamp.split(' ')[0] }}" required>
 
     <label for="time">Time (PST):</label>
-    <input type="time" id="time" name="time" value="{{ entry.timestamp.split(' ')[1] }}" step="1" required>
+    <input type="time" id="time" name="time" value="{{ entry.timestamp.split(' ')[1][:5] }}" required>
 
     <button type="submit">Save Changes</button>
   </form>
